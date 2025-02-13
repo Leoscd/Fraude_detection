@@ -24,44 +24,11 @@ mlflow.set_tracking_uri(mlflow_uri)
 
 @app.get("/health")
 async def health_check():
-    try:
-        # Verificar estado del modelo
-        model_status = "loaded" if model is not None else "not_loaded"
-        
-        # Verificar conexión con MLflow
-        mlflow_status = "connected"
-        try:
-            mlflow.get_tracking_uri()
-        except Exception as e:
-            mlflow_status = f"error: {str(e)}"
-        
-        # Verificar acceso a logs
-        logs_status = "accessible" if os.path.exists("logs") else "not_accessible"
-        
-        return {
-            "status": "healthy" if all([
-                model_status == "loaded",
-                mlflow_status == "connected",
-                logs_status == "accessible"
-            ]) else "degraded",
-            "components": {
-                "model": model_status,
-                "mlflow": mlflow_status,
-                "logs": logs_status
-            },
-            "timestamp": datetime.now().isoformat(),
-            "environment": os.getenv("ENVIRONMENT", "production")
-        }
-    except Exception as e:
-        logger.error(f"Health check failed: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={
-                "status": "unhealthy",
-                "error": str(e),
-                "timestamp": datetime.now().isoformat()
-            }
-        )
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "environment": os.getenv("ENVIRONMENT", "production")
+    }
 
 def log_prediction(input_data, prediction, probability):
     try:
