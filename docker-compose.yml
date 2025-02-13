@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  mlflow:
+    image: mlflow
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlflow/mlruns
+      - ./mlartifacts:/mlflow/mlartifacts
+
+  api:
+    image: fraud-detection-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mlflow
+    volumes:
+      - ./mlruns:/app/mlruns
+      - ./mlartifacts:/app/mlartifacts
+      - ./logs:/app/logs    # Agregamos el volumen de logs
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
