@@ -22,5 +22,9 @@ RUN mkdir -p /app/logs /app/mlartifacts
 ENV MLFLOW_TRACKING_URI=sqlite:///mlflow.db
 ENV MODEL_STAGE=Production
 
+# Script de inicio
+RUN echo '#!/bin/sh\nPORT="${PORT:-8000}"\nexec uvicorn src.api.app:app --host 0.0.0.0 --port $PORT' > /app/start.sh
+RUN chmod +x /app/start.sh
+
 # Configuración para Railway
-CMD uvicorn src.api.app:app --host 0.0.0.0 --port ${PORT:-8000}
+CMD ["/app/start.sh"]
