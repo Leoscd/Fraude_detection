@@ -1,0 +1,70 @@
+# Configuración Base
+base:
+  project_name: 'fraud_detection'
+  random_state: 42
+  env: 'development'
+
+# Rutas dinámicas de datos
+data:
+  processed_data_path: 'data/processed/processed_data.csv'
+  raw_data_path: 'data/raw/data2.csv'  # Agregamos esta línea explícitamente
+  base_path: 'data'
+  datasets:
+    fraud_detection:
+      name: 'data2'
+      type: 'csv'
+      params:
+        sep: ','
+        encoding: 'utf-8'
+  data_split:
+    train_size: 0.8
+    validation_size: 0.1
+    test_size: 0.1
+
+# Configuración de modelos
+models:
+  random_forest:
+    name: 'RandomForestClassifier'
+    hyperparameters:
+      default:
+        n_estimators: 100
+        max_depth: 10
+        class_weight: 'balanced'
+      grid_search:
+        n_estimators: [50, 100, 200]
+        max_depth: [5, 10, 15]
+        min_samples_split: [2, 5, 10]
+  
+  xgboost:
+    name: 'XGBClassifier'
+    hyperparameters:
+      default:
+        n_estimators: 100
+        max_depth: 6
+      grid_search:
+        n_estimators: [50, 100, 200]
+        max_depth: [3, 6, 9]
+        learning_rate: [0.01, 0.1, 0.3]
+
+# Configuración de experimentos
+experiment:
+  metrics:
+    - name: 'accuracy'
+      threshold: 0.95
+    - name: 'precision'
+      threshold: 0.90
+    - name: 'recall'
+      threshold: 0.90
+    - name: 'f1'
+      threshold: 0.90
+    - name: 'roc_auc'
+      threshold: 0.95
+
+# Configuración MLflow
+mlflow:
+  tracking_uri: 'http://localhost:5000'
+  registry_uri: 'sqlite:///mlflow.db'
+  experiments:
+    fraud_detection:
+      name: 'fraud_detection'
+      artifact_location: './mlruns'
