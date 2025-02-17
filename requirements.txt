@@ -1,7 +1,7 @@
-fastapi
 numpy
 pandas
 scikit-learn
 mlflow
 gunicorn==20.1.0
-uvicorn[standard]>=0.15.0
+fastapi==0.68.0
+uvicorn==0.15.0
