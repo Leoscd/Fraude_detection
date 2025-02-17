@@ -19,16 +19,31 @@ model = None
 def load_model():
     global model
     try:
-        mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
+        # Imprimir más información de debug
+        mlflow_uri = os.getenv("MLFLOW_TRACKING_URI")
+        logger.info(f"MLflow URI: {mlflow_uri}")
+        
+        mlflow.set_tracking_uri(mlflow_uri)
         model_name = "fraud_detection_model"
         stage = os.getenv("MODEL_STAGE", "Production")
+        logger.info(f"Intentando cargar modelo: {model_name}, stage: {stage}")
         
-        model = mlflow.sklearn.load_model(
-            model_uri=f"models:/{model_name}/{stage}"
-        )
+        # Intentar listar modelos disponibles
+        try:
+            logger.info("Modelos registrados:")
+            logger.info(mlflow.search_registered_models())
+        except Exception as e:
+            logger.error(f"Error listando modelos: {str(e)}")
+        
+        model_uri = f"models:/{model_name}/{stage}"
+        logger.info(f"Model URI: {model_uri}")
+        
+        model = mlflow.sklearn.load_model(model_uri)
         logger.info("Modelo cargado exitosamente")
+        return model
     except Exception as e:
         logger.error(f"Error cargando el modelo: {str(e)}")
+        logger.error(f"Detalles completos del error: {type(e).__name__}: {str(e)}")
         raise e
     
 @asynccontextmanager
