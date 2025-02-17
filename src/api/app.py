@@ -8,6 +8,7 @@ import json
 from datetime import datetime
 import os
 from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager  
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -15,8 +16,37 @@ logger = logging.getLogger(__name__)
 
 model = None
 
+def load_model():
+    global model
+    try:
+        mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
+        model_name = "fraud_detection_model"
+        stage = os.getenv("MODEL_STAGE", "Production")
+        
+        model = mlflow.sklearn.load_model(
+            model_uri=f"models:/{model_name}/{stage}"
+        )
+        logger.info("Modelo cargado exitosamente")
+    except Exception as e:
+        logger.error(f"Error cargando el modelo: {str(e)}")
+        raise e
+    
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Código que se ejecuta al iniciar
+    try:
+        load_model()
+        logger.info("Aplicación iniciada correctamente")
+    except Exception as e:
+        logger.error(f"Error al iniciar la aplicación: {str(e)}")
+    yield
+    # Código que se ejecuta al cerrar
+    logger.info("Aplicación cerrada")
+
+
 # Inicializar FastAPI
 app = FastAPI(title="Fraud Detection API")
+
 
 # Configurar MLflow - Ajustado para Railway
 mlflow_uri = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
@@ -51,7 +81,7 @@ def log_prediction(input_data, prediction, probability):
     except Exception as e:
         logger.error(f"Error guardando log: {str(e)}")
 
-# [El resto de tu código actual permanece igual...]
+
 @app.get("/")
 def read_root():
     return {"message": "Fraud Detection API"}
