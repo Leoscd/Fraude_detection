@@ -11,10 +11,13 @@ RUN mkdir -p /app/logs /app/mlartifacts
 
 ENV MLFLOW_TRACKING_URI=sqlite:///mlflow.db
 ENV MODEL_STAGE=Production
-ENV PORT=8000
 
-# Usar un script de inicio
-RUN echo '#!/bin/bash\nport="${PORT:-8000}"\nexec uvicorn src.api.app:app --host 0.0.0.0 --port "${port}"' > start.sh
+# Script de inicio más robusto
+RUN echo '#!/bin/bash\n\
+REAL_PORT=${PORT:-8000}\n\
+echo "Starting server on port $REAL_PORT"\n\
+exec uvicorn src.api.app:app --host 0.0.0.0 --port "$REAL_PORT"' > start.sh
+
 RUN chmod +x start.sh
 
 CMD ["./start.sh"]
