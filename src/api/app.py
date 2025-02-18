@@ -3,60 +3,51 @@ import mlflow
 import numpy as np
 import logging
 from src.api.models import PredictionInput, PredictionOutput
-from src.utils.mlflow_utils import get_best_model_info
 import json
 from datetime import datetime
 import os
 from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager  
+from contextlib import asynccontextmanager
 
-# Configurar logging
+# 1. Configurar logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# 2. Inicializar variables globales
 model = None
 
+# 3. Función de carga del modelo
 def load_model():
     global model
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
-        
-        # Cargar directamente desde el archivo .pkl en mlartifacts
         model_path = "mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
         logger.info(f"Intentando cargar modelo desde: {model_path}")
         
         import joblib
         model = joblib.load(model_path)
         logger.info("Modelo cargado exitosamente")
-        
         return model
-        
     except Exception as e:
         logger.error(f"Error cargando modelo: {str(e)}")
         logger.error("Traceback completo:", exc_info=True)
         raise e
-    
+
+# 4. Configurar lifespan
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Código que se ejecuta al iniciar
     try:
         load_model()
         logger.info("Aplicación iniciada correctamente")
     except Exception as e:
         logger.error(f"Error al iniciar la aplicación: {str(e)}")
     yield
-    # Código que se ejecuta al cerrar
     logger.info("Aplicación cerrada")
 
+# 5. Inicializar FastAPI
+app = FastAPI(title="Fraud Detection API", lifespan=lifespan)
 
-# Inicializar FastAPI
-app = FastAPI(title="Fraud Detection API")
-
-
-# Configurar MLflow - Ajustado para Railway
-mlflow_uri = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
-mlflow.set_tracking_uri(mlflow_uri)
-
+# 6. Definir endpoints
 @app.get("/health")
 async def health_check():
     return {
@@ -64,28 +55,6 @@ async def health_check():
         "timestamp": datetime.now().isoformat(),
         "environment": os.getenv("ENVIRONMENT", "production")
     }
-
-def log_prediction(input_data, prediction, probability):
-    try:
-        log_entry = {
-            "timestamp": datetime.now().isoformat(),
-            "input": input_data.dict(),
-            "prediction": prediction,
-            "probability": float(probability)
-        }
-        
-        log_path = "logs/prediction_logs.json"
-        logger.info(f"Intentando guardar log en: {log_path}")
-        os.makedirs("logs", exist_ok=True)
-        
-        with open(log_path, "a") as f:
-            json.dump(log_entry, f)
-            f.write("\n")
-            
-        logger.info("Log guardado exitosamente")
-    except Exception as e:
-        logger.error(f"Error guardando log: {str(e)}")
-
 
 @app.get("/")
 def read_root():
@@ -113,9 +82,6 @@ def predict(input_data: PredictionInput):
         logger.info(f"Predicción: {prediction}")
         logger.info(f"Probabilidad: {probability}")
         
-        # Agregar el logging aquí
-        log_prediction(input_data, prediction, probability)
-        
         return PredictionOutput(
             prediction=int(prediction),
             probability=float(probability)
@@ -123,9 +89,9 @@ def predict(input_data: PredictionInput):
     except Exception as e:
         logger.error(f"Error en predicción: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-    
 
-    
-if __name__ == "__main__":  
+# 7. Arranque de la aplicación
+if __name__ == "__main__":
     import uvicorn
     uvicorn.run("src.api.app:app", host="127.0.0.1", port=8000, reload=True)
+
