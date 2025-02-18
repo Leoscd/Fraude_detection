@@ -20,18 +20,15 @@ def load_model():
     global model
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
-        mlflow_uri = os.getenv("MLFLOW_TRACKING_URI")
-        logger.info(f"Conectando a MLflow en: {mlflow_uri}")
         
-        mlflow.set_tracking_uri(mlflow_uri)
+        # Cargar directamente desde el archivo .pkl en mlartifacts
+        model_path = "mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
+        logger.info(f"Intentando cargar modelo desde: {model_path}")
         
-        # Usar el mismo nombre que en el notebook
-        model_name = "random_forest_model"
-        run_name = "random_forest_fraud_detection"
-        
-        logger.info(f"Buscando modelo: {model_name} de run: {run_name}")
-        model = mlflow.sklearn.load_model(f"random_forest_model")
+        import joblib
+        model = joblib.load(model_path)
         logger.info("Modelo cargado exitosamente")
+        
         return model
         
     except Exception as e:
