@@ -19,31 +19,24 @@ model = None
 def load_model():
     global model
     try:
-        # Imprimir más información de debug
+        logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
         mlflow_uri = os.getenv("MLFLOW_TRACKING_URI")
-        logger.info(f"MLflow URI: {mlflow_uri}")
+        logger.info(f"Conectando a MLflow en: {mlflow_uri}")
         
         mlflow.set_tracking_uri(mlflow_uri)
-        model_name = "fraud_detection_model"
-        stage = os.getenv("MODEL_STAGE", "Production")
-        logger.info(f"Intentando cargar modelo: {model_name}, stage: {stage}")
         
-        # Intentar listar modelos disponibles
-        try:
-            logger.info("Modelos registrados:")
-            logger.info(mlflow.search_registered_models())
-        except Exception as e:
-            logger.error(f"Error listando modelos: {str(e)}")
+        # Usar el mismo nombre que en el notebook
+        model_name = "random_forest_model"
+        run_name = "random_forest_fraud_detection"
         
-        model_uri = f"models:/{model_name}/{stage}"
-        logger.info(f"Model URI: {model_uri}")
-        
-        model = mlflow.sklearn.load_model(model_uri)
+        logger.info(f"Buscando modelo: {model_name} de run: {run_name}")
+        model = mlflow.sklearn.load_model(f"random_forest_model")
         logger.info("Modelo cargado exitosamente")
         return model
+        
     except Exception as e:
-        logger.error(f"Error cargando el modelo: {str(e)}")
-        logger.error(f"Detalles completos del error: {type(e).__name__}: {str(e)}")
+        logger.error(f"Error cargando modelo: {str(e)}")
+        logger.error("Traceback completo:", exc_info=True)
         raise e
     
 @asynccontextmanager
