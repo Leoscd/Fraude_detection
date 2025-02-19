@@ -22,32 +22,40 @@ def load_model():
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
         
-        # Ir dos niveles arriba para llegar a la raíz del proyecto
-        project_root = os.path.dirname(os.path.dirname(os.getcwd()))
+        # Intentar diferentes rutas posibles
+        possible_paths = [
+            # Ruta relativa desde la raíz del proyecto
+            "mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl",
+            # Ruta absoluta
+            "/app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
+        ]
         
-        # Ruta al modelo
-        base_path = "mlartifacts"
-        model_dir = "426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model"
-        model_path = os.path.join(project_root, base_path, model_dir, "model.pkl")
+        # Intentar cargar el modelo desde las diferentes rutas
+        for model_path in possible_paths:
+            logger.info(f"Intentando cargar modelo desde: {model_path}")
+            if os.path.exists(model_path):
+                logger.info(f"✓ Archivo encontrado en: {model_path}")
+                import joblib
+                model = joblib.load(model_path)
+                logger.info("✓ Modelo cargado exitosamente")
+                return model
+            else:
+                logger.warning(f"No se encontró el modelo en: {model_path}")
         
-        logger.info(f"Intentando cargar modelo desde: {model_path}")
-        
-        # Cargar el modelo
-        import joblib
-        model = joblib.load(model_path)
-        logger.info("✓ Modelo cargado exitosamente")
-        
-        return model
+        # Si llegamos aquí, no se encontró el modelo
+        raise FileNotFoundError("No se encontró el modelo en ninguna ruta")
         
     except Exception as e:
         logger.error(f"Error cargando modelo: {str(e)}")
         logger.error("Traceback completo:", exc_info=True)
+        # Mostrar el contenido del directorio actual
+        logger.error(f"Contenido del directorio actual: {os.listdir('.')}")
         raise e
 
-# 4. Configurar lifespan
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
+        logger.info("Iniciando carga del modelo...")
         load_model()
         logger.info("Aplicación iniciada correctamente")
     except Exception as e:
