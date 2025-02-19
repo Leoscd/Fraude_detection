@@ -9,48 +9,44 @@ import os
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
-# 1. Configurar logging
+# Configurar logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 2. Inicializar variables globales
+# Variable global para el modelo
 model = None
 
-# 3. Función de carga del modelo
 def load_model():
     global model
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
+        model_path = "/app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
         
-        # Intentar diferentes rutas posibles
-        possible_paths = [
-            # Ruta relativa desde la raíz del proyecto
-            "mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl",
-            # Ruta absoluta
-            "/app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
-        ]
+        logger.info(f"Directorio actual: {os.getcwd()}")
+        logger.info(f"Verificando ruta: {model_path}")
         
-        # Intentar cargar el modelo desde las diferentes rutas
-        for model_path in possible_paths:
-            logger.info(f"Intentando cargar modelo desde: {model_path}")
-            if os.path.exists(model_path):
-                logger.info(f"✓ Archivo encontrado en: {model_path}")
-                import joblib
-                model = joblib.load(model_path)
-                logger.info("✓ Modelo cargado exitosamente")
-                return model
-            else:
-                logger.warning(f"No se encontró el modelo en: {model_path}")
-        
-        # Si llegamos aquí, no se encontró el modelo
-        raise FileNotFoundError("No se encontró el modelo en ninguna ruta")
-        
+        import joblib
+        model = joblib.load(model_path)
+        logger.info("✓ Modelo cargado exitosamente")
+        return model
     except Exception as e:
         logger.error(f"Error cargando modelo: {str(e)}")
-        logger.error("Traceback completo:", exc_info=True)
-        # Mostrar el contenido del directorio actual
-        logger.error(f"Contenido del directorio actual: {os.listdir('.')}")
         raise e
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("=== INICIANDO APLICACIÓN ===")
+    try:
+        load_model()  # Cargar el modelo al inicio
+        logger.info("Aplicación iniciada correctamente")
+    except Exception as e:
+        logger.error(f"Error al iniciar la aplicación: {str(e)}")
+    yield
+    logger.info("Aplicación cerrada")
+
+# Ahora sí, inicializar FastAPI con el lifespan
+app = FastAPI(title="Fraud Detection API", lifespan=lifespan)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -80,11 +76,15 @@ def read_root():
     return {"message": "Fraud Detection API"}
 
 @app.post("/predict", response_model=PredictionOutput)
-def predict(input_data: PredictionInput):
+async def predict(input_data: PredictionInput):
+    # Verificar el modelo de manera más informativa
     if model is None:
-        logger.error("Modelo no disponible para predicciones")
-        raise HTTPException(status_code=500, detail="Modelo no disponible")
-        
+        logger.error("Estado del modelo: No inicializado")
+        raise HTTPException(
+            status_code=500,
+            detail="Modelo no disponible - Error en la inicialización"
+        )
+    
     try:
         features = np.array([[
             input_data.V14,
@@ -93,13 +93,12 @@ def predict(input_data: PredictionInput):
             input_data.V12,
             input_data.V1
         ]])
-        logger.info(f"Datos de entrada: {features}")
+        logger.info(f"Procesando predicción con features: {features}")
         
         prediction = model.predict(features)[0]
         probability = model.predict_proba(features)[0][1]
         
-        logger.info(f"Predicción: {prediction}")
-        logger.info(f"Probabilidad: {probability}")
+        logger.info(f"Predicción completada: {prediction}, prob: {probability}")
         
         return PredictionOutput(
             prediction=int(prediction),
@@ -107,7 +106,10 @@ def predict(input_data: PredictionInput):
         )
     except Exception as e:
         logger.error(f"Error en predicción: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error en predicción: {str(e)}"
+        )
 
 # 7. Arranque de la aplicación
 if __name__ == "__main__":
