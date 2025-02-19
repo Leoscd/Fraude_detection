@@ -21,13 +21,24 @@ def load_model():
     global model
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
-        model_path = "mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
+        
+        # Ir dos niveles arriba para llegar a la raíz del proyecto
+        project_root = os.path.dirname(os.path.dirname(os.getcwd()))
+        
+        # Ruta al modelo
+        base_path = "mlartifacts"
+        model_dir = "426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model"
+        model_path = os.path.join(project_root, base_path, model_dir, "model.pkl")
+        
         logger.info(f"Intentando cargar modelo desde: {model_path}")
         
+        # Cargar el modelo
         import joblib
         model = joblib.load(model_path)
-        logger.info("Modelo cargado exitosamente")
+        logger.info("✓ Modelo cargado exitosamente")
+        
         return model
+        
     except Exception as e:
         logger.error(f"Error cargando modelo: {str(e)}")
         logger.error("Traceback completo:", exc_info=True)
