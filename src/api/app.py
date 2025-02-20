@@ -20,22 +20,25 @@ def load_model():
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
         
-        # Usar ruta simple
-        model_path = "/app/model.pkl"
+        model_path = "mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
         logger.info(f"Intentando cargar modelo desde: {model_path}")
         
+        # Verificar existencia del archivo
         if os.path.exists(model_path):
+            logger.info(f"✓ Archivo encontrado ({os.path.getsize(model_path)} bytes)")
             import joblib
             model = joblib.load(model_path)
             logger.info("✓ Modelo cargado exitosamente")
             return model
         else:
-            logger.error(f"No se encuentra el modelo en: {model_path}")
-            logger.info(f"Contenido de /app: {os.listdir('/app')}")
+            logger.error(f"Archivo no encontrado en: {model_path}")
+            # Mostrar contenido del directorio para debug
+            logger.error(f"Contenido del directorio actual: {os.listdir('.')}")
             return None
             
     except Exception as e:
         logger.error(f"Error cargando modelo: {str(e)}")
+        logger.error("Traceback completo:", exc_info=True)
         return None
 
 
