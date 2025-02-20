@@ -9,8 +9,14 @@ RUN apt-get update && apt-get install -y curl
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar todo el código y archivos
+# Copiar PRIMERO la carpeta mlartifacts
+COPY mlartifacts/ /app/mlartifacts/
+
+# Luego copiar el resto del código
 COPY . .
+
+# Verificar que el modelo está presente
+RUN ls -la /app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/
 
 # Variables de entorno
 ENV MLFLOW_TRACKING_URI=sqlite:///mlflow.db
