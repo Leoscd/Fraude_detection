@@ -15,48 +15,41 @@ logger = logging.getLogger(__name__)
 
 # Variable global para el modelo
 model = None
-
 def load_model():
     global model
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
         
-        # 1. Verificar el directorio actual y listar contenido
-        current_dir = os.getcwd()
-        logger.info(f"1. Directorio actual: {current_dir}")
-        logger.info(f"1.1 Contenido del directorio actual: {os.listdir(current_dir)}")
+        # Ruta base del modelo
+        base_path = "mlartifacts"
+        model_dir = "426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model"
+        model_file = "model.pkl"
         
-        # 2. Intentar diferentes rutas
-        possible_paths = [
-            "/app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl",
-            "mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl",
-            "./mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
-        ]
+        # Construir ruta completa
+        model_path = os.path.join(base_path, model_dir, model_file)
         
-        # 3. Intentar cada ruta
-        for path in possible_paths:
-            logger.info(f"2. Intentando ruta: {path}")
-            if os.path.exists(path):
-                logger.info(f"3. ✓ Archivo encontrado en: {path}")
-                import joblib
-                model = joblib.load(path)
-                logger.info("4. ✓ Modelo cargado exitosamente")
-                
-                # Verificar que el modelo tiene los métodos necesarios
-                if hasattr(model, 'predict') and hasattr(model, 'predict_proba'):
-                    logger.info("5. ✓ Modelo verificado correctamente")
-                    return model
-                else:
-                    raise ValueError("El modelo no tiene los métodos requeridos")
+        logger.info(f"Directorio actual: {os.getcwd()}")
+        logger.info(f"Intentando cargar modelo desde: {model_path}")
         
-        # Si no se encontró el modelo en ninguna ruta
-        raise FileNotFoundError(f"No se encontró el modelo en ninguna de las rutas intentadas")
+        # Verificar si el archivo existe
+        if not os.path.exists(model_path):
+            logger.error(f"Archivo no encontrado en: {model_path}")
+            # Mostrar contenido del directorio
+            logger.error(f"Contenido de {base_path}: {os.listdir(base_path)}")
+            raise FileNotFoundError(f"No se encontró el modelo en {model_path}")
         
+        # Cargar el modelo
+        import joblib
+        model = joblib.load(model_path)
+        logger.info("✓ Modelo cargado exitosamente")
+        
+        return model
     except Exception as e:
-        logger.error(f"ERROR en carga del modelo: {type(e).__name__}")
-        logger.error(f"Mensaje de error: {str(e)}")
+        logger.error(f"Error cargando modelo: {str(e)}")
         logger.error("Traceback completo:", exc_info=True)
         raise e
+
+
     
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -81,7 +74,7 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "environment": os.getenv("ENVIRONMENT", "production")
+        "model_status": "loaded" if model is not None else "not_loaded"
     }
 
 @app.get("/")
