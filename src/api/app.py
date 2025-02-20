@@ -20,34 +20,28 @@ def load_model():
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
         
-        # Ruta base del modelo
-        base_path = "mlartifacts"
-        model_dir = "426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model"
-        model_file = "model.pkl"
+        # Verificar estructura de directorios
+        current_dir = os.getcwd()
+        logger.info(f"Directorio actual: {current_dir}")
+        logger.info(f"Contenido del directorio: {os.listdir(current_dir)}")
         
-        # Construir ruta completa
-        model_path = os.path.join(base_path, model_dir, model_file)
+        # Intentar cargar modelo
+        model_path = os.path.join(current_dir, "mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl")
+        logger.info(f"Intentando cargar desde: {model_path}")
         
-        logger.info(f"Directorio actual: {os.getcwd()}")
-        logger.info(f"Intentando cargar modelo desde: {model_path}")
-        
-        # Verificar si el archivo existe
-        if not os.path.exists(model_path):
+        if os.path.exists(model_path):
+            import joblib
+            model = joblib.load(model_path)
+            logger.info("✓ Modelo cargado exitosamente")
+            return model
+        else:
             logger.error(f"Archivo no encontrado en: {model_path}")
-            # Mostrar contenido del directorio
-            logger.error(f"Contenido de {base_path}: {os.listdir(base_path)}")
             raise FileNotFoundError(f"No se encontró el modelo en {model_path}")
-        
-        # Cargar el modelo
-        import joblib
-        model = joblib.load(model_path)
-        logger.info("✓ Modelo cargado exitosamente")
-        
-        return model
+            
     except Exception as e:
         logger.error(f"Error cargando modelo: {str(e)}")
         logger.error("Traceback completo:", exc_info=True)
-        raise e
+        return None
 
 
     
@@ -55,13 +49,14 @@ def load_model():
 async def lifespan(app: FastAPI):
     logger.info("=== INICIANDO APLICACIÓN ===")
     try:
-        logger.info("1. Iniciando carga del modelo...")
-        load_model()
-        logger.info("2. Modelo cargado correctamente")
+        global model
+        model = load_model()
+        if model is not None:
+            logger.info("✓ Aplicación iniciada con modelo cargado")
+        else:
+            logger.error("✗ No se pudo cargar el modelo")
     except Exception as e:
-        logger.error("=== ERROR EN INICIALIZACIÓN ===")
-        logger.error(f"Tipo de error: {type(e).__name__}")
-        logger.error(f"Mensaje: {str(e)}")
+        logger.error(f"Error en inicio: {str(e)}")
     yield
     logger.info("=== CERRANDO APLICACIÓN ===")
 
@@ -74,7 +69,9 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "model_status": "loaded" if model is not None else "not_loaded"
+        "model_status": "loaded" if model is not None else "not_loaded",
+        "current_directory": os.getcwd(),
+        "files_available": os.listdir(os.getcwd())
     }
 
 @app.get("/")
