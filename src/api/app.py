@@ -21,37 +21,34 @@ def load_model():
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
         
+        # Verificar versiones
+        import sklearn
+        logger.info(f"scikit-learn version: {sklearn.__version__}")
+        import joblib
+        logger.info(f"joblib version: {joblib.__version__}")
+        
         model_path = "/app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
-        logger.info(f"Intentando cargar modelo desde: {model_path}")
-
-        # Intentar diferentes métodos de carga
-        try:
-            import joblib
-            logger.info("Intentando cargar con joblib...")
-            model = joblib.load(model_path)
-        except Exception as e1:
-            logger.warning(f"Error con joblib: {str(e1)}")
-            try:
-                from sklearn.externals import joblib
-                logger.info("Intentando cargar con sklearn.externals.joblib...")
-                model = joblib.load(model_path)
-            except Exception as e2:
-                logger.warning(f"Error con sklearn.joblib: {str(e2)}")
-                try:
-                    import pickle
-                    logger.info("Intentando cargar con pickle...")
-                    with open(model_path, 'rb') as f:
-                        model = pickle.load(f)
-                except Exception as e3:
-                    logger.error("Todos los métodos de carga fallaron")
-                    raise Exception(f"No se pudo cargar el modelo: {str(e3)}")
-
-        if model is not None:
-            logger.info("✓ Modelo cargado exitosamente")
+        
+        if not os.path.exists(model_path):
+            logger.error(f"Archivo no encontrado: {model_path}")
+            raise FileNotFoundError(f"No se encuentra el modelo en {model_path}")
+            
+        # Intentar cargar el modelo
+        logger.info(f"Cargando modelo desde: {model_path}")
+        model = joblib.load(model_path)
+        
+        # Verificar tipo del modelo
+        logger.info(f"Tipo de modelo cargado: {type(model)}")
+        
+        if hasattr(model, 'predict') and hasattr(model, 'predict_proba'):
+            logger.info("✓ Modelo cargado y verificado exitosamente")
             return model
+        else:
+            raise ValueError("El modelo cargado no tiene los métodos requeridos")
             
     except Exception as e:
-        logger.error(f"Error final en carga del modelo: {str(e)}")
+        logger.error(f"Error cargando modelo: {str(e)}")
+        logger.error("Traceback completo:", exc_info=True)
         return None
 
 @asynccontextmanager
