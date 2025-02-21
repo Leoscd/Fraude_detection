@@ -5,8 +5,6 @@ data/processed/*
 
 # ML artifacts
 mlruns/
-mlartifacts/
-*.pkl
 *.model
 
 # Logs
