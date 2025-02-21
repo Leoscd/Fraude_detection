@@ -13,7 +13,6 @@ from contextlib import asynccontextmanager
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Variable global para el modelo
 # Variables globales
 model = None
 
@@ -21,26 +20,31 @@ def load_model():
     global model
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
-        current_dir = os.getcwd()
-        logger.info(f"Directorio actual: {current_dir}")
-        logger.info(f"Contenido del directorio: {os.listdir(current_dir)}")
         
-        model_path = "mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
+        # Construir ruta absoluta
+        base_dir = "/app"  # Railway usa /app como WORKDIR
+        model_path = os.path.join(
+            base_dir,
+            "mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
+        )
+        
         logger.info(f"Intentando cargar modelo desde: {model_path}")
         
         if not os.path.exists(model_path):
-            logger.error(f"Modelo no encontrado en: {model_path}")
-            # Intentar listar el contenido del directorio padre
-            parent_dir = os.path.dirname(model_path)
-            if os.path.exists(parent_dir):
-                logger.info(f"Contenido de {parent_dir}: {os.listdir(parent_dir)}")
+            logger.error(f"✗ Modelo no encontrado en: {model_path}")
             return None
 
         import joblib
-        model = joblib.load(model_path)
-        logger.info("Modelo cargado exitosamente")
-        return model
+        loaded_model = joblib.load(model_path)
         
+        # Verificar que el modelo tiene los métodos necesarios
+        if hasattr(loaded_model, 'predict') and hasattr(loaded_model, 'predict_proba'):
+            logger.info("✓ Modelo cargado y verificado exitosamente")
+            return loaded_model
+        else:
+            logger.error("✗ El modelo cargado no tiene los métodos requeridos")
+            return None
+            
     except Exception as e:
         logger.error(f"Error cargando modelo: {str(e)}")
         logger.error("Traceback completo:", exc_info=True)
