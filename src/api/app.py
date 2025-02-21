@@ -21,37 +21,29 @@ def load_model():
     global model
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
+        current_dir = os.getcwd()
+        logger.info(f"Directorio actual: {current_dir}")
+        logger.info(f"Contenido del directorio: {os.listdir(current_dir)}")
         
-        # Ruta al modelo
         model_path = "mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
-        logger.info(f"1. Verificando ruta del modelo: {model_path}")
+        logger.info(f"Intentando cargar modelo desde: {model_path}")
         
-        # Verificar existencia
         if not os.path.exists(model_path):
-            logger.error(f"2. ✗ Modelo no encontrado en: {model_path}")
-            current_dir = os.getcwd()
-            logger.error(f"2.1 Directorio actual: {current_dir}")
-            logger.error(f"2.2 Contenido del directorio: {os.listdir(current_dir)}")
+            logger.error(f"Modelo no encontrado en: {model_path}")
+            # Intentar listar el contenido del directorio padre
+            parent_dir = os.path.dirname(model_path)
+            if os.path.exists(parent_dir):
+                logger.info(f"Contenido de {parent_dir}: {os.listdir(parent_dir)}")
             return None
-            
-        logger.info("2. ✓ Archivo del modelo encontrado")
-        
-        # Cargar modelo
+
         import joblib
         model = joblib.load(model_path)
-        logger.info("3. ✓ Modelo cargado")
-        
-        # Verificar métodos necesarios
-        if not (hasattr(model, 'predict') and hasattr(model, 'predict_proba')):
-            logger.error("4. ✗ El modelo no tiene los métodos requeridos")
-            return None
-            
-        logger.info("4. ✓ Modelo verificado y listo")
+        logger.info("Modelo cargado exitosamente")
         return model
         
     except Exception as e:
-        logger.error(f"ERROR en carga del modelo: {str(e)}")
-        logger.error("Traceback:", exc_info=True)
+        logger.error(f"Error cargando modelo: {str(e)}")
+        logger.error("Traceback completo:", exc_info=True)
         return None
 
 @asynccontextmanager
@@ -78,13 +70,28 @@ app = FastAPI(title="Fraud Detection API", lifespan=lifespan)
 # 6. Definir endpoints
 @app.get("/health")
 async def health_check():
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "model_status": "loaded" if model is not None else "not_loaded",
-        "current_directory": os.getcwd(),
-        "files_available": os.listdir(os.getcwd())
-    }
+    try:
+        current_dir = os.getcwd()
+        model_path = "mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
+        
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "model_status": {
+                "is_loaded": model is not None,
+                "model_path": model_path,
+                "model_exists": os.path.exists(model_path),
+                "current_directory": current_dir,
+                "directory_contents": os.listdir(current_dir)
+            },
+            "environment": os.getenv("ENVIRONMENT", "production")
+        }
+    except Exception as e:
+        logger.error(f"Error en health check: {str(e)}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
 
 @app.get("/")
 def read_root():
