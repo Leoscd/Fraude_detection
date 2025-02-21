@@ -21,33 +21,37 @@ def load_model():
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
         
-        # Construir ruta absoluta
-        base_dir = "/app"  # Railway usa /app como WORKDIR
-        model_path = os.path.join(
-            base_dir,
-            "mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
-        )
-        
+        model_path = "/app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
         logger.info(f"Intentando cargar modelo desde: {model_path}")
-        
-        if not os.path.exists(model_path):
-            logger.error(f"✗ Modelo no encontrado en: {model_path}")
-            return None
 
-        import joblib
-        loaded_model = joblib.load(model_path)
-        
-        # Verificar que el modelo tiene los métodos necesarios
-        if hasattr(loaded_model, 'predict') and hasattr(loaded_model, 'predict_proba'):
-            logger.info("✓ Modelo cargado y verificado exitosamente")
-            return loaded_model
-        else:
-            logger.error("✗ El modelo cargado no tiene los métodos requeridos")
-            return None
+        # Intentar diferentes métodos de carga
+        try:
+            import joblib
+            logger.info("Intentando cargar con joblib...")
+            model = joblib.load(model_path)
+        except Exception as e1:
+            logger.warning(f"Error con joblib: {str(e1)}")
+            try:
+                from sklearn.externals import joblib
+                logger.info("Intentando cargar con sklearn.externals.joblib...")
+                model = joblib.load(model_path)
+            except Exception as e2:
+                logger.warning(f"Error con sklearn.joblib: {str(e2)}")
+                try:
+                    import pickle
+                    logger.info("Intentando cargar con pickle...")
+                    with open(model_path, 'rb') as f:
+                        model = pickle.load(f)
+                except Exception as e3:
+                    logger.error("Todos los métodos de carga fallaron")
+                    raise Exception(f"No se pudo cargar el modelo: {str(e3)}")
+
+        if model is not None:
+            logger.info("✓ Modelo cargado exitosamente")
+            return model
             
     except Exception as e:
-        logger.error(f"Error cargando modelo: {str(e)}")
-        logger.error("Traceback completo:", exc_info=True)
+        logger.error(f"Error final en carga del modelo: {str(e)}")
         return None
 
 @asynccontextmanager
