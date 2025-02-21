@@ -21,33 +21,40 @@ def load_model():
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
         
-        # Verificar versiones
-        import sklearn
-        logger.info(f"scikit-learn version: {sklearn.__version__}")
-        import joblib
-        logger.info(f"joblib version: {joblib.__version__}")
+        # Construir ruta del modelo de manera robusta
+        project_root = os.path.dirname(os.path.dirname(os.getcwd()))
+        base_path = "mlartifacts"
+        model_dir = "426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model"
+        model_path = os.path.join(project_root, base_path, model_dir, "model.pkl")
         
-        model_path = "/app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
-        
-        if not os.path.exists(model_path):
-            logger.error(f"Archivo no encontrado: {model_path}")
-            raise FileNotFoundError(f"No se encuentra el modelo en {model_path}")
+        logger.info(f"Directorio actual: {os.getcwd()}")
+        logger.info(f"Directorio raíz: {project_root}")
+        logger.info(f"Intentando cargar desde: {model_path}")
+
+        # Verificar existencia y tamaño
+        if os.path.exists(model_path):
+            file_size = os.path.getsize(model_path)
+            logger.info(f"✓ Archivo encontrado ({file_size} bytes)")
             
-        # Intentar cargar el modelo
-        logger.info(f"Cargando modelo desde: {model_path}")
-        model = joblib.load(model_path)
-        
-        # Verificar tipo del modelo
-        logger.info(f"Tipo de modelo cargado: {type(model)}")
-        
-        if hasattr(model, 'predict') and hasattr(model, 'predict_proba'):
-            logger.info("✓ Modelo cargado y verificado exitosamente")
-            return model
+            # Cargar el modelo
+            import joblib
+            loaded_model = joblib.load(model_path)
+            logger.info("✓ Modelo cargado")
+            
+            # Verificar métodos
+            if hasattr(loaded_model, 'predict') and hasattr(loaded_model, 'predict_proba'):
+                logger.info("✓ Modelo verificado correctamente")
+                return loaded_model
+            else:
+                logger.error("✗ El modelo no tiene los métodos necesarios")
+                return None
         else:
-            raise ValueError("El modelo cargado no tiene los métodos requeridos")
+            logger.error(f"✗ Archivo no encontrado: {model_path}")
+            logger.info(f"Contenido del directorio actual: {os.listdir(os.getcwd())}")
+            return None
             
     except Exception as e:
-        logger.error(f"Error cargando modelo: {str(e)}")
+        logger.error(f"Error en carga del modelo: {str(e)}")
         logger.error("Traceback completo:", exc_info=True)
         return None
 
@@ -68,7 +75,6 @@ async def lifespan(app: FastAPI):
     logger.info("=== CERRANDO APLICACIÓN ===")
 
 
-
 # 5. Inicializar FastAPI
 app = FastAPI(title="Fraud Detection API", lifespan=lifespan)
 
@@ -76,27 +82,28 @@ app = FastAPI(title="Fraud Detection API", lifespan=lifespan)
 @app.get("/health")
 async def health_check():
     try:
-        current_dir = os.getcwd()
-        model_path = "mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
+        model_base = "/app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model"
+        model_path = f"{model_base}/model.pkl"
         
-        return {
+        status_info = {
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
             "model_status": {
                 "is_loaded": model is not None,
-                "model_path": model_path,
-                "model_exists": os.path.exists(model_path),
-                "current_directory": current_dir,
-                "directory_contents": os.listdir(current_dir)
+                "model_base_exists": os.path.exists(model_base),
+                "model_file_exists": os.path.exists(model_path),
+                "model_dir_contents": os.listdir(model_base) if os.path.exists(model_base) else [],
+                "model_file_size": os.path.getsize(model_path) if os.path.exists(model_path) else 0,
+                "current_directory": os.getcwd()
             },
             "environment": os.getenv("ENVIRONMENT", "production")
         }
+        
+        return status_info
     except Exception as e:
         logger.error(f"Error en health check: {str(e)}")
-        return {
-            "status": "error",
-            "error": str(e)
-        }
+        return {"status": "error", "error": str(e)}
+
 
 @app.get("/")
 def read_root():
