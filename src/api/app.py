@@ -14,49 +14,63 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Variable global para el modelo
+# Variables globales
 model = None
+
 def load_model():
     global model
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
         
+        # Ruta al modelo
         model_path = "mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
-        logger.info(f"Intentando cargar modelo desde: {model_path}")
+        logger.info(f"1. Verificando ruta del modelo: {model_path}")
         
-        # Verificar existencia del archivo
-        if os.path.exists(model_path):
-            logger.info(f"✓ Archivo encontrado ({os.path.getsize(model_path)} bytes)")
-            import joblib
-            model = joblib.load(model_path)
-            logger.info("✓ Modelo cargado exitosamente")
-            return model
-        else:
-            logger.error(f"Archivo no encontrado en: {model_path}")
-            # Mostrar contenido del directorio para debug
-            logger.error(f"Contenido del directorio actual: {os.listdir('.')}")
+        # Verificar existencia
+        if not os.path.exists(model_path):
+            logger.error(f"2. ✗ Modelo no encontrado en: {model_path}")
+            current_dir = os.getcwd()
+            logger.error(f"2.1 Directorio actual: {current_dir}")
+            logger.error(f"2.2 Contenido del directorio: {os.listdir(current_dir)}")
             return None
             
+        logger.info("2. ✓ Archivo del modelo encontrado")
+        
+        # Cargar modelo
+        import joblib
+        model = joblib.load(model_path)
+        logger.info("3. ✓ Modelo cargado")
+        
+        # Verificar métodos necesarios
+        if not (hasattr(model, 'predict') and hasattr(model, 'predict_proba')):
+            logger.error("4. ✗ El modelo no tiene los métodos requeridos")
+            return None
+            
+        logger.info("4. ✓ Modelo verificado y listo")
+        return model
+        
     except Exception as e:
-        logger.error(f"Error cargando modelo: {str(e)}")
-        logger.error("Traceback completo:", exc_info=True)
+        logger.error(f"ERROR en carga del modelo: {str(e)}")
+        logger.error("Traceback:", exc_info=True)
         return None
 
-
-    
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("=== INICIANDO APLICACIÓN ===")
     try:
-        global model
-        model = load_model()
-        if model is not None:
-            logger.info("✓ Aplicación iniciada con modelo cargado")
+        loaded_model = load_model()
+        if loaded_model is not None:
+            global model
+            model = loaded_model
+            logger.info("✓ Modelo cargado exitosamente en startup")
         else:
-            logger.error("✗ No se pudo cargar el modelo")
+            logger.error("✗ No se pudo cargar el modelo en startup")
     except Exception as e:
-        logger.error(f"Error en inicio: {str(e)}")
+        logger.error(f"Error en startup: {str(e)}")
     yield
     logger.info("=== CERRANDO APLICACIÓN ===")
+
+
 
 # 5. Inicializar FastAPI
 app = FastAPI(title="Fraud Detection API", lifespan=lifespan)
