@@ -6,6 +6,7 @@ from src.api.models import PredictionInput, PredictionOutput
 import json
 from datetime import datetime
 import os
+import requests
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
@@ -21,13 +22,34 @@ def load_model():
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
         
-        # Usar variable de entorno para la ruta del modelo
-        model_path = os.getenv(
-            "MODEL_PATH", 
-            "/app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
-        )
+        # Rutas y URLs del modelo
+        model_dir = os.getenv("MODEL_DIR", "/app/models")
+        model_path = os.getenv("MODEL_PATH", os.path.join(model_dir, "model.pkl"))
+        model_url = os.getenv("MODEL_URL", None)
         
-        logger.info(f"Intentando cargar modelo desde: {model_path}")
+        # Crear directorio para el modelo si no existe
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+        
+        # Si tenemos una URL del modelo, intentar descargarla
+        if model_url:
+            try:
+                logger.info(f"Intentando descargar modelo desde: {model_url}")
+                
+                # Configurar timeout para evitar bloqueos
+                response = requests.get(model_url, timeout=60)
+                
+                if response.status_code == 200:
+                    with open(model_path, 'wb') as f:
+                        f.write(response.content)
+                    logger.info(f"✓ Modelo descargado exitosamente a: {model_path}")
+                else:
+                    logger.error(f"✗ Error al descargar modelo. Código: {response.status_code}")
+                    logger.error(f"Respuesta: {response.text[:200]}...")
+            except Exception as e:
+                logger.error(f"✗ Error en la descarga del modelo: {str(e)}")
+                # Continuar con la carga local si falla la descarga
+        else:
+            logger.info("No se proporcionó MODEL_URL, intentando carga local")
         
         # Verificar existencia del archivo
         if os.path.exists(model_path):
@@ -76,37 +98,56 @@ async def lifespan(app: FastAPI):
     logger.info("=== CERRANDO APLICACIÓN ===")
 
 
-# 5. Inicializar FastAPI
+# Inicializar FastAPI
 app = FastAPI(title="Fraud Detection API", lifespan=lifespan)
 
-# 6. Definir endpoints
+# Definir endpoints
 @app.get("/health")
 async def health_check():
     try:
-        # Usar la misma variable de entorno que en load_model
-        model_path = os.getenv(
-            "MODEL_PATH", 
-            "/app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
-        )
+        # Información sobre el estado del modelo
+        model_dir = os.getenv("MODEL_DIR", "/app/models")
+        model_path = os.getenv("MODEL_PATH", os.path.join(model_dir, "model.pkl"))
+        model_url = os.getenv("MODEL_URL", "No configurado")
+        
+        # Verificar existencia y tamaño
+        model_exists = os.path.exists(model_path)
+        model_size = os.path.getsize(model_path) if model_exists else 0
+        
+        # Verificar directorio
+        model_dir_exists = os.path.exists(os.path.dirname(model_path))
+        dir_contents = os.listdir(os.path.dirname(model_path)) if model_dir_exists else []
         
         status_info = {
-            "status": "healthy",
+            "status": "healthy" if model is not None else "unhealthy",
             "timestamp": datetime.now().isoformat(),
             "model_status": {
                 "is_loaded": model is not None,
                 "model_path": model_path,
-                "model_exists": os.path.exists(model_path),
-                "model_file_size": os.path.getsize(model_path) if os.path.exists(model_path) else 0,
+                "model_url": model_url,
+                "model_exists": model_exists,
+                "model_file_size": model_size,
+                "model_dir_exists": model_dir_exists,
+                "directory_contents": dir_contents,
                 "current_directory": os.getcwd(),
-                "directory_contents": os.listdir(os.path.dirname(model_path)) if os.path.exists(os.path.dirname(model_path)) else []
             },
             "environment": os.getenv("ENVIRONMENT", "production")
         }
         
+        # Si el modelo no está cargado, devolver código 503
+        if model is None:
+            return JSONResponse(
+                content=status_info,
+                status_code=503
+            )
+        
         return status_info
     except Exception as e:
         logger.error(f"Error en health check: {str(e)}")
-        return {"status": "error", "error": str(e)}
+        return JSONResponse(
+            content={"status": "error", "error": str(e)},
+            status_code=500
+        )
 
 
 @app.get("/")
@@ -119,7 +160,7 @@ async def predict(input_data: PredictionInput):
     if model is None:
         logger.error("Estado del modelo: No inicializado")
         raise HTTPException(
-            status_code=500,
+            status_code=503,
             detail="Modelo no disponible - Error en la inicialización"
         )
     
@@ -149,8 +190,7 @@ async def predict(input_data: PredictionInput):
             detail=f"Error en predicción: {str(e)}"
         )
 
-# 7. Arranque de la aplicación
+# Arranque de la aplicación
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("src.api.app:app", host="127.0.0.1", port=8000, reload=True)
-

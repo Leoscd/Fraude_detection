@@ -12,3 +12,4 @@ mlflow==2.16.2
 # Dependencias adicionales
 pydantic>=1.8.0  # Para los modelos de datos
 python-multipart>=0.0.5  # Para manejar datos de formulario
+requests>=2.28.0
