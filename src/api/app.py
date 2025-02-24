@@ -221,7 +221,8 @@ def check_url_access(url):
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
-
+    
+    
 # Arranque de la aplicación
 if __name__ == "__main__":
     import uvicorn
