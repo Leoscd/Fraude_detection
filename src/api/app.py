@@ -21,17 +21,15 @@ def load_model():
     try:
         logger.info("=== INICIO PROCESO DE CARGA DEL MODELO ===")
         
-        # Construir ruta del modelo de manera robusta
-        project_root = os.path.dirname(os.path.dirname(os.getcwd()))
-        base_path = "mlartifacts"
-        model_dir = "426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model"
-        model_path = os.path.join(project_root, base_path, model_dir, "model.pkl")
+        # Usar variable de entorno para la ruta del modelo
+        model_path = os.getenv(
+            "MODEL_PATH", 
+            "/app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
+        )
         
-        logger.info(f"Directorio actual: {os.getcwd()}")
-        logger.info(f"Directorio raíz: {project_root}")
-        logger.info(f"Intentando cargar desde: {model_path}")
-
-        # Verificar existencia y tamaño
+        logger.info(f"Intentando cargar modelo desde: {model_path}")
+        
+        # Verificar existencia del archivo
         if os.path.exists(model_path):
             file_size = os.path.getsize(model_path)
             logger.info(f"✓ Archivo encontrado ({file_size} bytes)")
@@ -39,9 +37,9 @@ def load_model():
             # Cargar el modelo
             import joblib
             loaded_model = joblib.load(model_path)
-            logger.info("✓ Modelo cargado")
+            logger.info("✓ Modelo cargado exitosamente")
             
-            # Verificar métodos
+            # Verificar que el modelo tiene los métodos necesarios
             if hasattr(loaded_model, 'predict') and hasattr(loaded_model, 'predict_proba'):
                 logger.info("✓ Modelo verificado correctamente")
                 return loaded_model
@@ -50,7 +48,10 @@ def load_model():
                 return None
         else:
             logger.error(f"✗ Archivo no encontrado: {model_path}")
-            logger.info(f"Contenido del directorio actual: {os.listdir(os.getcwd())}")
+            # Mostrar contenido del directorio para debug
+            parent_dir = os.path.dirname(model_path)
+            if os.path.exists(parent_dir):
+                logger.info(f"Contenido de {parent_dir}: {os.listdir(parent_dir)}")
             return None
             
     except Exception as e:
@@ -82,19 +83,22 @@ app = FastAPI(title="Fraud Detection API", lifespan=lifespan)
 @app.get("/health")
 async def health_check():
     try:
-        model_base = "/app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model"
-        model_path = f"{model_base}/model.pkl"
+        # Usar la misma variable de entorno que en load_model
+        model_path = os.getenv(
+            "MODEL_PATH", 
+            "/app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"
+        )
         
         status_info = {
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
             "model_status": {
                 "is_loaded": model is not None,
-                "model_base_exists": os.path.exists(model_base),
-                "model_file_exists": os.path.exists(model_path),
-                "model_dir_contents": os.listdir(model_base) if os.path.exists(model_base) else [],
+                "model_path": model_path,
+                "model_exists": os.path.exists(model_path),
                 "model_file_size": os.path.getsize(model_path) if os.path.exists(model_path) else 0,
-                "current_directory": os.getcwd()
+                "current_directory": os.getcwd(),
+                "directory_contents": os.listdir(os.path.dirname(model_path)) if os.path.exists(os.path.dirname(model_path)) else []
             },
             "environment": os.getenv("ENVIRONMENT", "production")
         }

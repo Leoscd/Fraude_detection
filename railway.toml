@@ -5,3 +5,10 @@ builder = "dockerfile"
 startCommand = ""
 healthcheckPath = "/health"
 restartPolicyType = "on_failure"
+
+[service]
+internal_port = 8000
+auto_stop = true
+
+[variables]
+MODEL_PATH = "/app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl"

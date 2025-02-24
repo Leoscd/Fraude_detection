@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar todo el proyecto
 COPY . .
 
-# Verificar la estructura después de copiar (para debugging)
+# Verificar la estructura después de copiar
 RUN echo "=== Contenido de /app ===" && \
     ls -la /app && \
     echo "=== Contenido de mlartifacts (si existe) ===" && \
@@ -20,6 +20,7 @@ RUN echo "=== Contenido de /app ===" && \
 
 # Variables de entorno
 ENV PORT=8000
+ENV MODEL_PATH=/app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl
 
 # Comando para iniciar
 CMD uvicorn src.api.app:app --host 0.0.0.0 --port ${PORT}
