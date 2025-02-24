@@ -97,7 +97,6 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("=== CERRANDO APLICACIÓN ===")
 
-
 # Inicializar FastAPI
 app = FastAPI(title="Fraud Detection API", lifespan=lifespan)
 
@@ -149,7 +148,6 @@ async def health_check():
             status_code=500
         )
 
-
 @app.get("/")
 def read_root():
     return {"message": "Fraud Detection API"}
@@ -189,6 +187,40 @@ async def predict(input_data: PredictionInput):
             status_code=500,
             detail=f"Error en predicción: {str(e)}"
         )
+
+@app.get("/debug")
+async def debug_info():
+    return {
+        "environment_variables": {
+            "MODEL_URL": os.getenv("MODEL_URL", "No configurado"),
+            "MODEL_PATH": os.getenv("MODEL_PATH", "No configurado"),
+            "MODEL_DIR": os.getenv("MODEL_DIR", "No configurado")
+        },
+        "file_system": {
+            "current_directory": os.getcwd(),
+            "app_directory_exists": os.path.exists("/app"),
+            "models_directory_exists": os.path.exists("/app/models"),
+            "models_directory_contents": os.listdir("/app/models") if os.path.exists("/app/models") else []
+        },
+        "model_status": {
+            "is_loaded": model is not None,
+            "can_access_url": check_url_access(os.getenv("MODEL_URL", ""))
+        }
+    }
+
+def check_url_access(url):
+    try:
+        if not url:
+            return {"status": "error", "message": "URL no proporcionada"}
+        response = requests.head(url, timeout=5)
+        return {
+            "status": "success" if response.status_code == 200 else "error",
+            "status_code": response.status_code,
+            "content_type": response.headers.get("Content-Type", "desconocido"),
+            "content_length": response.headers.get("Content-Length", "desconocido")
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 # Arranque de la aplicación
 if __name__ == "__main__":

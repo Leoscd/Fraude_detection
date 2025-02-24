@@ -22,7 +22,9 @@ RUN mkdir -p /app/models
 ENV PORT=8000
 ENV MODEL_DIR=/app/models
 ENV MODEL_PATH=/app/models/model.pkl
-# MODEL_URL se configura en Railway
+ENV ENVIRONMENT=production
+ENV MLFLOW_TRACKING_URI=sqlite:///mlflow.db
+# MODEL_URL se configura directamente en Railway
 
 # Verificar la estructura después de copiar
 RUN echo "=== Contenido de /app ===" && \
