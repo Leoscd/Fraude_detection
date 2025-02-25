@@ -15,22 +15,28 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar todo el proyecto
 COPY . .
 
-# Crear directorio para el modelo
+# Crear directorio para el modelo (por si acaso)
 RUN mkdir -p /app/models
 
 # Variables de entorno
 ENV PORT=8000
 ENV MODEL_DIR=/app/models
 ENV MODEL_PATH=/app/models/model.pkl
-ENV ENVIRONMENT=production
-ENV MLFLOW_TRACKING_URI=sqlite:///mlflow.db
-# MODEL_URL se configura directamente en Railway
+
+# IMPORTANTE: Asegurarnos de que el modelo esté en el lugar correcto
+# Esto moverá el modelo desde donde está en tu repo a donde la app espera encontrarlo
+RUN if [ -f /app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl ]; then \
+        mkdir -p /app/models && \
+        cp /app/mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl /app/models/model.pkl && \
+        echo "Modelo copiado exitosamente"; \
+    else \
+        echo "ERROR: No se encontró el archivo del modelo"; \
+        exit 1; \
+    fi
 
 # Verificar la estructura después de copiar
-RUN echo "=== Contenido de /app ===" && \
-    ls -la /app && \
-    echo "=== Contenido de models ===" && \
-    ls -la /app/models || echo "directorio de modelos vacío"
+RUN echo "=== Contenido de /app/models ===" && \
+    ls -la /app/models
 
-# Ejecutar la aplicación
+# Comando para iniciar
 CMD uvicorn src.api.app:app --host 0.0.0.0 --port ${PORT}

@@ -30,7 +30,27 @@ def load_model():
         # Crear directorio para el modelo si no existe
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
         
-        # Si tenemos una URL del modelo, intentar descargarla
+        # MODIFICADO: Verificar primero si el modelo existe localmente
+        if os.path.exists(model_path):
+            file_size = os.path.getsize(model_path)
+            logger.info(f"✓ Modelo encontrado localmente ({file_size} bytes)")
+            
+            # Cargar el modelo
+            import joblib
+            loaded_model = joblib.load(model_path)
+            logger.info("✓ Modelo cargado exitosamente desde archivo local")
+            
+            if hasattr(loaded_model, 'predict') and hasattr(loaded_model, 'predict_proba'):
+                logger.info("✓ Modelo verificado correctamente")
+                return loaded_model
+            else:
+                logger.error("✗ El modelo local no tiene los métodos necesarios")
+                # Continuar con la descarga en línea como respaldo
+        else:
+            logger.info(f"Modelo no encontrado en la ruta local: {model_path}")
+            # Continuar con la descarga en línea
+        
+        # El resto de la función permanece igual - intentar descargar si hay URL
         if model_url:
             try:
                 logger.info(f"Intentando descargar modelo desde: {model_url}")
@@ -51,7 +71,7 @@ def load_model():
         else:
             logger.info("No se proporcionó MODEL_URL, intentando carga local")
         
-        # Verificar existencia del archivo
+        # Verificar existencia del archivo (ya sea cargado localmente o descargado)
         if os.path.exists(model_path):
             file_size = os.path.getsize(model_path)
             logger.info(f"✓ Archivo encontrado ({file_size} bytes)")
