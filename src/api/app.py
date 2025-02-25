@@ -221,7 +221,13 @@ def check_url_access(url):
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
-    
+    # En la función check_url_access
+    except requests.exceptions.ConnectionError:
+        return {"status": "error", "message": "No se pudo conectar con la URL (conexión rechazada)"}
+    except requests.exceptions.Timeout:
+        return {"status": "error", "message": "Tiempo de espera agotado al intentar acceder a la URL"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
     
 # Arranque de la aplicación
 if __name__ == "__main__":
