@@ -104,16 +104,7 @@ def load_model():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("=== INICIANDO APLICACIÓN ===")
-    try:
-        loaded_model = load_model()
-        if loaded_model is not None:
-            global model
-            model = loaded_model
-            logger.info("✓ Modelo cargado exitosamente en startup")
-        else:
-            logger.error("✗ No se pudo cargar el modelo en startup")
-    except Exception as e:
-        logger.error(f"Error en startup: {str(e)}")
+    # Ya no intentamos cargar el modelo al iniciar
     yield
     logger.info("=== CERRANDO APLICACIÓN ===")
 
@@ -157,7 +148,14 @@ def read_root():
 
 @app.post("/predict", response_model=PredictionOutput)
 async def predict(input_data: PredictionInput):
-    # Verificar el modelo de manera más informativa
+    global model
+    
+    # Cargar el modelo bajo demanda si no está cargado
+    if model is None:
+        logger.info("Modelo no cargado, intentando cargar bajo demanda")
+        model = load_model()
+        
+    # Verificar si se pudo cargar el modelo
     if model is None:
         logger.error("Estado del modelo: No inicializado")
         raise HTTPException(
@@ -228,7 +226,26 @@ def check_url_access(url):
         return {"status": "error", "message": "Tiempo de espera agotado al intentar acceder a la URL"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+@app.post("/load-model")
+async def load_model_endpoint():
+    global model
+    try:
+        if model is not None:
+            return {"status": "success", "message": "Modelo ya está cargado"}
+            
+        loaded_model = load_model()
+        if loaded_model is not None:
+            model = loaded_model
+            return {"status": "success", "message": "Modelo cargado exitosamente"}
+        else:
+            return {"status": "error", "message": "No se pudo cargar el modelo"}
+    except Exception as e:
+        logger.error(f"Error cargando modelo: {str(e)}")
+        return {"status": "error", "message": f"Error: {str(e)}"}
     
+        
 # Arranque de la aplicación
 if __name__ == "__main__":
     import uvicorn
