@@ -39,4 +39,5 @@ RUN echo "=== Contenido de /app/models ===" && \
     ls -la /app/models
 
 # Comando para iniciar
-CMD uvicorn src.api.app:app --host 0.0.0.0 --port ${PORT}
+RUN pip install gunicorn
+CMD gunicorn src.api.app:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT} --timeout 120
