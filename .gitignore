@@ -1,11 +1,16 @@
-# Crear/modificar .gitignore
-echo "# Data files
+# Data files
 data/raw/*
 data/processed/*
+!data/reference_stats.json
 
 # ML artifacts
 mlruns/
 *.model
+# Pero mantenemos el archivo del modelo necesario para Railway
+!mlartifacts/426660670654388389/fa4a6618c80747fdab8e573b58f17030/artifacts/random_forest_model/model.pkl
+
+# Drift monitoring
+data/drift_history.json
 
 # Logs
 logs/
@@ -15,8 +20,29 @@ logs/
 __pycache__/
 *.pyc
 *.pyo
-
-# Environment
+*.pyd
+.Python
+env/
 .env
 .venv/
-venv/" > .gitignore
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE / Editores
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Distribución
+dist/
+build/
+*.egg-info/
