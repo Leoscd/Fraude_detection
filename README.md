@@ -147,7 +147,7 @@ Las contribuciones son bienvenidas. Por favor, revise primero [nuestra guía de 
 
 ## 📬 Contacto
 
-Leonardo Díaz - [GitHub Profile](https://github.com/Leoscd) - [LinkedIn](https://www.linkedin.com/in/leonardoadriandiaz/)
+Leonardo Díaz - [GitHub Profile](https://github.com/Leoscd) - [LinkedIn](www.linkedin.com/in/leo-iml)
 
 ## 📄 Licencia
 
